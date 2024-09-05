@@ -2,10 +2,10 @@ import apsw
 from typing import Any, List, Optional
 from .encoding import encode_value, decode_value
 
-class LightDB:
+class Client:
     def __init__(self, path: str):
         """
-        Initializes a new instance of LightDB.
+        Initializes a new instance of FlashSQL.
 
         This constructor opens a connection to a SQLite database specified by the `path`.
         If the path is ":memory:", an in-memory database is created.
@@ -31,14 +31,14 @@ class LightDB:
         self.conn.execute("PRAGMA mmap_size=30000000000")
 
         self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS lightdb (
+            CREATE TABLE IF NOT EXISTS FlashSQL (
                 key TEXT PRIMARY KEY,
                 value BLOB
             ) WITHOUT ROWID;
         """)
         
         self.conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_key ON lightdb (key);
+            CREATE INDEX IF NOT EXISTS idx_key ON FlashSQL (key);
         """)
 
         self.conn.execute("PRAGMA busy_timeout=5000")
@@ -54,7 +54,7 @@ class LightDB:
         Returns:
             Optional[Any]: The value associated with the key if it exists, otherwise None.
         """
-        self.cursor.execute("SELECT value FROM lightdb WHERE key = ? LIMIT 1", (key,))
+        self.cursor.execute("SELECT value FROM FlashSQL WHERE key = ? LIMIT 1", (key,))
         result = self.cursor.fetchone()
         if result:
             return decode_value(result[0])
@@ -71,7 +71,7 @@ class LightDB:
             value (Any): The value to be stored, which should be serializable.
         """
         encoded_value = encode_value(value)
-        self.cursor.execute("INSERT OR REPLACE INTO lightdb (key, value) VALUES (?, ?)", (key, encoded_value))
+        self.cursor.execute("INSERT OR REPLACE INTO FlashSQL (key, value) VALUES (?, ?)", (key, encoded_value))
 
     def delete(self, key: str) -> None:
         """
@@ -80,7 +80,7 @@ class LightDB:
         Args:
             key (str): The key of the entry to be deleted.
         """
-        self.cursor.execute("DELETE FROM lightdb WHERE key = ?", (key,))
+        self.cursor.execute("DELETE FROM FlashSQL WHERE key = ?", (key,))
 
     def close(self) -> None:
         """
@@ -98,7 +98,7 @@ class LightDB:
         Returns:
             bool: True if the key exists, False otherwise.
         """
-        self.cursor.execute("SELECT 1 FROM lightdb WHERE key = ? LIMIT 1", (key,))
+        self.cursor.execute("SELECT 1 FROM FlashSQL WHERE key = ? LIMIT 1", (key,))
         return self.cursor.fetchone() is not None
 
     def keys(self, pattern: str = "%") -> List[str]:
@@ -111,5 +111,5 @@ class LightDB:
         Returns:
             List[str]: A list of keys that match the pattern.
         """
-        self.cursor.execute("SELECT key FROM lightdb WHERE key LIKE ?", (pattern,))
+        self.cursor.execute("SELECT key FROM FlashSQL WHERE key LIKE ?", (pattern,))
         return [row[0] for row in self.cursor.fetchall()]

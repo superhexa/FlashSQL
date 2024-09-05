@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='lightdb',
+    name='FlashSQL',
     version='0.1.0',
     description='A lightweight key-value database using SQLite and APSW.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='Hexa',
     author_email='shexa.developer@gmail.com',
-    url='https://github.com/superhexa/lightdb',  
+    url='https://github.com/superhexa/FlashSQL',  
     packages=find_packages(),
     install_requires=[
         'apsw',  
@@ -31,10 +31,8 @@ setup(
     ],
     keywords='database key-value sqlite apsw',
     project_urls={
-        'Documentation': 'https://github.com/superhexa/lightdb#readme',  
-        'Source': 'https://github.com/superhexa/lightdb',  
-        'Tracker': 'https://github.com/superhexa/lightdb/issues',  
-    },
-    include_package_data=True,
-    zip_safe=False,
+        'Documentation': 'https://github.com/superhexa/FlashSQL#readme',  
+        'Source': 'https://github.com/superhexa/FlashSQL',  
+        'Tracker': 'https://github.com/superhexa/FlashSQL/issues',  
+    }
 )
