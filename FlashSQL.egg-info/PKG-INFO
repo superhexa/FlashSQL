@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: FlashSQL
-Version: 0.1.0
+Version: 0.2.0
 Summary: A lightweight key-value database using SQLite and APSW.
 Home-page: https://github.com/superhexa/FlashSQL
 Author: Hexa
