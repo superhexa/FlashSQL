@@ -1,6 +1,14 @@
+<div align="center">
+
 # FlashSQL
 
 **FlashSQL** is a high-performance key-value store built on SQLite with support for optional expiration. It offers a simple and efficient interface for storing, retrieving, and managing key-value pairs with additional features like pagination and database optimization.
+
+[![PyPI Version](https://img.shields.io/pypi/v/flashsql?label=PyPI)](https://pypi.org/project/flashsql/)
+[![Python Version](https://img.shields.io/pypi/pyversions/flashsql?label=Python)](https://pypi.org/project/flashsql/)
+[![License](https://img.shields.io/pypi/l/flashsql?label=License)](https://opensource.org/licenses/MIT)
+
+</div>
 
 ## Features
 
