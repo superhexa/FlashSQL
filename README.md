@@ -93,8 +93,7 @@ db.close()
 from FlashSQL import Client
 
 # Initialize the database
-db = from FlashSQL import Client
-(':memory:')
+db = Client(':memory:')
 
 # Store values
 db.set('name', 'hexa')
