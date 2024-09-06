@@ -235,4 +235,3 @@ class Client:
         Closes the database connection.
         """
         self.conn.close()
-        
