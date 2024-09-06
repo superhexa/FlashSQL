@@ -66,18 +66,11 @@ db.set('session', {'user': 'hexa'}, ttl=3600)  # Expires in 1 hour
 
 Use the `get` method to retrieve the value associated with a key. If the key does not exist or has expired, `None` is returned.
 
-**Without Expiration:**
+**Example:**
 
 ```python
 value = db.get('name')
 print(value)  # Output: 'hexa'
-```
-
-**With Expiration:**
-
-```python
-value = db.get('session')
-print(value)  # Output: {'user': 'hexa'} if within TTL
 ```
 
 ### Deleting Values
@@ -92,18 +85,11 @@ db.delete('name')
 
 Use the `exists` method to check if a key is present and not expired.
 
-**Without Expiration:**
+**Example:**
 
 ```python
 exists = db.exists('name')
 print(exists)  # Output: False (if the key was deleted)
-```
-
-**With Expiration:**
-
-```python
-exists = db.exists('session')
-print(exists)  # Output: True if within TTL, False otherwise
 ```
 
 ### Renaming Keys
@@ -126,12 +112,6 @@ print(expire_date)  # Output: ISO 8601 formatted expiration date or None
 ### Setting Expiration Date
 
 Use the `set_expire` method to set a new expiration time (TTL) for an existing key.
-
-**Without TTL:**
-
-```python
-db.set('session', {'user': 'hexa'})
-```
 
 **With TTL:**
 
