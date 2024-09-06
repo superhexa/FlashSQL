@@ -28,7 +28,7 @@ jobs:
 
       - name: Build the package
         run: |
-          python -m build
+          python -m build --verbose
 
       - name: Publish to PyPI
         env:
