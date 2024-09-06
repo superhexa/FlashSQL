@@ -66,8 +66,6 @@ db.set('session', {'user': 'hexa'}, ttl=3600)  # Expires in 1 hour
 
 Use the `get` method to retrieve the value associated with a key. If the key does not exist or has expired, `None` is returned.
 
-**Example:**
-
 ```python
 value = db.get('name')
 print(value)  # Output: 'hexa'
@@ -84,8 +82,6 @@ db.delete('name')
 ### Checking Key Existence
 
 Use the `exists` method to check if a key is present and not expired.
-
-**Example:**
 
 ```python
 exists = db.exists('name')
@@ -113,8 +109,6 @@ print(expire_date)  # Output: ISO 8601 formatted expiration date or None
 
 Use the `set_expire` method to set a new expiration time (TTL) for an existing key.
 
-**With TTL:**
-
 ```python
 db.set_expire('session', ttl=7200)  # Expires in 2 hours
 ```
@@ -122,8 +116,6 @@ db.set_expire('session', ttl=7200)  # Expires in 2 hours
 ### Retrieving Keys
 
 Use the `keys` method to retrieve a list of keys matching a specified pattern.
-
-**Example:**
 
 ```python
 keys = db.keys('%')
@@ -133,8 +125,6 @@ print(keys)  # Output: List of all keys
 ### Pagination
 
 Use the `paginate` method to retrieve a paginated list of keys matching a pattern.
-
-**Example:**
 
 ```python
 paged_keys = db.paginate(pattern='key%', page=1, page_size=2)
