@@ -29,7 +29,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
-    keywords='database key-value sqlite apsw',
+    keywords='database key-value sqlite apsw peformance',
     project_urls={
         'Documentation': 'https://github.com/superhexa/FlashSQL#readme',  
         'Source': 'https://github.com/superhexa/FlashSQL',  
