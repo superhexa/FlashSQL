@@ -146,7 +146,8 @@ class Client:
         Retrieves all keys matching the given pattern.
 
         Args:
-            pattern: SQL LIKE pattern to match keys. Defaults to '%' which matches all keys.
+            pattern: SQL LIKE pattern to match keys. The "_" character matches any single character.
+                    Defaults to '%' which matches all keys.
 
         Returns:
             A list of keys matching the pattern.
@@ -160,7 +161,8 @@ class Client:
         Retrieves a paginated list of keys matching the pattern.
 
         Args:
-            pattern: SQL LIKE pattern to match keys. Defaults to '%'.
+            pattern: SQL LIKE pattern to match keys. The "_" character matches any single character.
+                    Defaults to '%'.
             page: Page number (1-based).
             page_size: Number of keys per page.
 
