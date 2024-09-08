@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='FlashSQL',
-    version='0.3.2,
+    version='0.3.2',
     description='A lightweight key-value database using SQLite and APSW.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
