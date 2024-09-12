@@ -283,3 +283,45 @@ class Client:
         self.cursor.execute("SELECT 1 FROM FlashDB WHERE key = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1", 
                             (key, self._current_time()))
         return self.cursor.fetchone() is not None
+    
+    def pop(self, key: str) -> Optional[Any]:
+        """
+        Retrieves and removes the value associated with the key if it exists.
+
+        Args:
+            key: The key to pop.
+
+        Returns:
+            The value associated with the key, or None if the key does not exist or has expired.
+        """
+        value = self.get(key)
+        self.delete(key) if value else None
+        return value
+    
+    def update(self, key: str, value: Any) -> bool:
+        """
+        Updates the value of an existing key without modifying its expiration.
+
+        Args:
+            key: The key to update.
+            value: The new value to store.
+
+        Returns:
+            True if the update was successful (key exists), False otherwise.
+        """
+        result = self.cursor.execute("SELECT expires_at FROM FlashDB WHERE key = ?", (key,)).fetchone()
+        return bool(result) and self.cursor.execute("UPDATE FlashDB SET value = ? WHERE key = ?", (encode_value(value), key))
+    
+    def move(self, old_key: str, new_key: str) -> bool:
+        """
+        Moves the value from the old key to a new key.
+
+        Args:
+            old_key: The current key to move from.
+            new_key: The new key to move to.
+
+        Returns:
+            True if the move was successful (old key exists), False otherwise.
+        """
+        value = self.pop(old_key)
+        return bool(value) and self.set(new_key, value)

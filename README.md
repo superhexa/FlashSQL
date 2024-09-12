@@ -220,6 +220,31 @@ Use the `close` method to close the database connection.
 db.close()
 ```
 
+### Popping Values
+
+Use the `pop` method to retrieve and remove the value associated with a key.
+
+```python
+value = db.pop('session')
+print(value)  # Output: {'user': 'hexa'} if within TTL and removed from the database
+```
+
+### Moving Values
+
+Use the `move` method to move a value from one key to another.
+
+```python
+db.move('old_key', 'new_key')
+```
+
+### Updating Values
+
+Use the `update` method to update the value of an existing key without changing its expiration.
+
+```python
+db.update('name', 'new_value')
+```
+
 ## Full Example
 
 ```python
@@ -272,6 +297,16 @@ print(expire_date)  # Output: ISO 8601 formatted expiration date or None
 # Set expiration date
 db.set_expire('new_key', ttl=7200)  # Expires in 2 hours
 
+# Pop a value (retrieve and delete)
+popped_value = db.pop('age')
+print(popped_value)  # Output: 30
+
+# Move a value from one key to another
+db.move('new_key', 'moved_key')
+
+# Update a value without changing its expiration
+db.update('moved_key', 'updated_value')
+
 # Clean up expired keys
 db.cleanup()
 
@@ -279,20 +314,9 @@ db.cleanup()
 db.vacuum()
 
 # Ensure changes are written to disk
-db.flush()
-
-# Execute raw SQL
-results = db.execute("SELECT key FROM FlashDB WHERE key LIKE ?", ('key%',))
-print(results)  # Output: Results of the raw SQL query
+db.flush
+()
 
 # Close the database
 db.close()
 ```
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! Please submit pull requests or open issues to improve the functionality and performance of FlashSQL.
