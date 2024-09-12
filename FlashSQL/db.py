@@ -124,14 +124,15 @@ class Client:
         batch_size = 1000
         result = {}
         
-        # Use placeholder dynamically based on batch size
-        sql = """
-            SELECT key, value FROM FlashDB 
-            WHERE key IN ({placeholders}) AND (expires_at IS NULL OR expires_at > ?)
-        """.format(placeholders=','.join('?' for _ in range(batch_size)))
-        
         for i in range(0, len(keys), batch_size):
             batch = keys[i:i + batch_size]
+            placeholders = ','.join('?' for _ in batch)  
+            
+            sql = f"""
+                SELECT key, value FROM FlashDB 
+                WHERE key IN ({placeholders}) AND (expires_at IS NULL OR expires_at > ?)
+            """
+            
             self.cursor.execute(sql, (*batch, now))
             result.update({key: decode_value(value) for key, value in self.cursor.fetchall()})
         
