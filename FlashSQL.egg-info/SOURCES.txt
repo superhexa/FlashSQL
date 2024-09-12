@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.py
+.github/workflows/python-package.yml
+FlashSQL/__init__.py
+FlashSQL/db.py
+FlashSQL/encoding.py
+FlashSQL.egg-info/PKG-INFO
+FlashSQL.egg-info/SOURCES.txt
+FlashSQL.egg-info/dependency_links.txt
+FlashSQL.egg-info/requires.txt
+FlashSQL.egg-info/top_level.txt
