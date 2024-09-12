@@ -1,6 +1,7 @@
 import apsw
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime
+
 from .encoding import encode_value, decode_value
 
 class Client:
@@ -23,31 +24,39 @@ class Client:
         """
         Sets up the database schema and PRAGMA settings for optimal performance.
         """
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA synchronous=NORMAL")
+        self.conn.execute("PRAGMA journal_mode=OFF")
+        self.conn.execute("PRAGMA synchronous=OFF")
         self.conn.execute("PRAGMA temp_store=MEMORY")
-        self.conn.execute("PRAGMA cache_size=-64000")
-        self.conn.execute("PRAGMA mmap_size=30000000000")
-        self.conn.execute("PRAGMA optimize")
-        
+        self.conn.execute("PRAGMA cache_size=-128000") 
+        self.conn.execute("PRAGMA mmap_size=5000000000")  # 5GB memory map
+        self.conn.execute("PRAGMA busy_timeout=10000")  
+        self.conn.execute("PRAGMA page_size=8192")
+        self.conn.execute("PRAGMA locking_mode=EXCLUSIVE")
+        self.conn.execute("PRAGMA foreign_keys=OFF")
+
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS FlashDB (
                 key TEXT PRIMARY KEY,
                 value BLOB,
-                expires_at DATETIME
+                expires_at INTEGER
             ) WITHOUT ROWID;
         """)
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_key ON FlashDB (key);")
-        self.conn.execute("PRAGMA busy_timeout=5000")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_expires_at ON FlashDB (expires_at) WHERE expires_at IS NOT NULL;")
 
-    def _current_time(self) -> str:
+        self.conn.execute("PRAGMA optimize")
+        self.conn.execute("ANALYZE")
+        self.conn.execute("PRAGMA cache_spill=FALSE")  
+        self.conn.execute("PRAGMA auto_vacuum=INCREMENTAL") 
+        self.conn.execute("PRAGMA wal_autocheckpoint=1000")  
+
+    def _current_time(self) -> int:
         """
-        Gets the current UTC time as a string in ISO 8601 format.
+        Gets the current UTC time as a Unix timestamp.
 
         Returns:
-            Current UTC time in ISO format.
+            Current UTC time as a Unix timestamp.
         """
-        return datetime.utcnow().isoformat()
+        return int(datetime.utcnow().timestamp())
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
         """
@@ -58,7 +67,7 @@ class Client:
             value: The value to store, which should be serializable.
             ttl: Time-to-live in seconds. If not provided, the key never expires.
         """
-        expires_at = (datetime.utcnow() + timedelta(seconds=ttl)).isoformat() if ttl else None
+        expires_at = (self._current_time() + ttl) if ttl else None
         self.cursor.execute("""
             INSERT OR REPLACE INTO FlashDB (key, value, expires_at) 
             VALUES (?, ?, ?)
@@ -77,7 +86,7 @@ class Client:
             VALUES (?, ?, ?)
         """
         values = [
-            (key, encode_value(value), (datetime.utcnow() + timedelta(seconds=ttl)).isoformat() if ttl else None)
+            (key, encode_value(value), (now + ttl) if ttl else None)
             for key, (value, ttl) in items.items()
         ]
         self.cursor.executemany(sql, values)
@@ -92,15 +101,18 @@ class Client:
         Returns:
             The value associated with the key, or None if the key does not exist or has expired.
         """
-        self.cleanup()
-        self.cursor.execute("SELECT value FROM FlashDB WHERE key = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1", 
-                            (key, self._current_time()))
+        now = self._current_time()
+        self.cursor.execute("""
+            SELECT value FROM FlashDB 
+            WHERE key = ? AND (expires_at IS NULL OR expires_at > ?) 
+            LIMIT 1
+        """, (key, now))
         result = self.cursor.fetchone()
         return decode_value(result[0]) if result else None
 
     def get_many(self, keys: List[str]) -> Dict[str, Optional[Any]]:
         """
-        Retrieves values for multiple keys.
+        Retrieves values for multiple keys efficiently using batching and indexing.
 
         Args:
             keys: List of keys to look up.
@@ -108,15 +120,22 @@ class Client:
         Returns:
             A dictionary where keys are the key names and values are the associated values or None if not found or expired.
         """
-        self.cleanup()
         now = self._current_time()
-        placeholders = ','.join('?' for _ in keys)
-        self.cursor.execute(f"""
+        batch_size = 1000
+        result = {}
+        
+        # Use placeholder dynamically based on batch size
+        sql = """
             SELECT key, value FROM FlashDB 
             WHERE key IN ({placeholders}) AND (expires_at IS NULL OR expires_at > ?)
-        """, (*keys, now))
-        result = self.cursor.fetchall()
-        return {key: decode_value(value) for key, value in result}
+        """.format(placeholders=','.join('?' for _ in range(batch_size)))
+        
+        for i in range(0, len(keys), batch_size):
+            batch = keys[i:i + batch_size]
+            self.cursor.execute(sql, (*batch, now))
+            result.update({key: decode_value(value) for key, value in self.cursor.fetchall()})
+        
+        return result
 
     def delete(self, key: str) -> None:
         """
@@ -129,13 +148,17 @@ class Client:
 
     def delete_many(self, keys: List[str]) -> None:
         """
-        Deletes multiple key-value pairs in one batch.
+        Deletes multiple key-value pairs in batches to avoid SQL variable limit.
 
         Args:
             keys: List of keys to delete.
         """
-        placeholders = ','.join('?' for _ in keys)
-        self.cursor.execute(f"DELETE FROM FlashDB WHERE key IN ({placeholders})", keys)
+        batch_size = 1000
+        for i in range(0, len(keys), batch_size):
+            batch = keys[i:i + batch_size]
+            placeholders = ','.join('?' for _ in batch)
+            sql = f"DELETE FROM FlashDB WHERE key IN ({placeholders})"
+            self.cursor.execute(sql, batch)
 
     def rename(self, old_key: str, new_key: str) -> None:
         """
@@ -155,7 +178,7 @@ class Client:
             key: The key to check.
 
         Returns:
-            The expiration date as an ISO formatted string, or None if the key has no expiration.
+            The expiration date as a Unix timestamp, or None if the key has no expiration.
         """
         self.cursor.execute("SELECT expires_at FROM FlashDB WHERE key = ? LIMIT 1", (key,))
         result = self.cursor.fetchone()
@@ -169,7 +192,7 @@ class Client:
             key: The key to set expiration for.
             ttl: Time-to-live in seconds from now.
         """
-        expires_at = (datetime.utcnow() + timedelta(seconds=ttl)).isoformat()
+        expires_at = self._current_time() + ttl
         self.cursor.execute("UPDATE FlashDB SET expires_at = ? WHERE key = ?", (expires_at, key))
 
     def keys(self, pattern: str = "%") -> List[str]:
@@ -183,7 +206,6 @@ class Client:
         Returns:
             A list of keys matching the pattern.
         """
-        self.cleanup()
         self.cursor.execute("SELECT key FROM FlashDB WHERE key LIKE ?", (pattern,))
         return [row[0] for row in self.cursor.fetchall()]
 
@@ -200,7 +222,6 @@ class Client:
         Returns:
             A list of keys for the specified page.
         """
-        self.cleanup()
         offset = (page - 1) * page_size
         self.cursor.execute("""
             SELECT key FROM FlashDB WHERE key LIKE ? LIMIT ? OFFSET ?
@@ -236,7 +257,7 @@ class Client:
         """
         now = self._current_time()
         self.cursor.execute("DELETE FROM FlashDB WHERE expires_at IS NOT NULL AND expires_at <= ?", (now,))
-    
+
     def vacuum(self) -> None:
         """
         Optimizes the database file by reducing its size using the VACUUM command.
@@ -279,10 +300,9 @@ class Client:
         Returns:
             True if the key exists and is not expired, False otherwise.
         """
-        self.cleanup()
-        self.cursor.execute("SELECT 1 FROM FlashDB WHERE key = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1", 
+        self.cursor.execute("SELECT EXISTS(SELECT 1 FROM FlashDB WHERE key = ? AND (expires_at IS NULL OR expires_at > ?))", 
                             (key, self._current_time()))
-        return self.cursor.fetchone() is not None
+        return self.cursor.fetchone()[0] == 1
     
     def pop(self, key: str) -> Optional[Any]:
         """
@@ -295,7 +315,8 @@ class Client:
             The value associated with the key, or None if the key does not exist or has expired.
         """
         value = self.get(key)
-        self.delete(key) if value else None
+        if value:
+            self.delete(key)
         return value
     
     def update(self, key: str, value: Any) -> bool:
@@ -309,8 +330,11 @@ class Client:
         Returns:
             True if the update was successful (key exists), False otherwise.
         """
-        result = self.cursor.execute("SELECT expires_at FROM FlashDB WHERE key = ?", (key,)).fetchone()
-        return bool(result) and self.cursor.execute("UPDATE FlashDB SET value = ? WHERE key = ?", (encode_value(value), key))
+        self.cursor.execute("SELECT EXISTS(SELECT 1 FROM FlashDB WHERE key = ?)", (key,))
+        if self.cursor.fetchone()[0] == 1:
+            self.cursor.execute("UPDATE FlashDB SET value = ? WHERE key = ?", (encode_value(value), key))
+            return True
+        return False
     
     def move(self, old_key: str, new_key: str) -> bool:
         """
