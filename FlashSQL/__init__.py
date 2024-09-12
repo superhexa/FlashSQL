@@ -1,3 +1,3 @@
-from .db import Client
+from .db import *
 
-__all__ = ['Client']
+all = ["Client"]

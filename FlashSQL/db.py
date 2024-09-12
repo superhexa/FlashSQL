@@ -1,14 +1,11 @@
 import apsw
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from .encoding import encode_value, decode_value
 
 class Client:
     """
     FlashSQL is a high-performance key-value store built on SQLite with expiration support.
-
-    Provides efficient operations to store, retrieve, and manage key-value pairs with optional expiration times.
-    Supports pagination, cleaning up expired keys, and optimizing the database file size.
     """
 
     def __init__(self, db_path: str) -> None:
@@ -66,6 +63,24 @@ class Client:
             VALUES (?, ?, ?)
         """, (key, encode_value(value), expires_at))
 
+    def set_many(self, items: Dict[str, Tuple[Any, Optional[int]]]) -> None:
+        """
+        Sets multiple key-value pairs with optional expiration (TTL) in one batch.
+
+        Args:
+            items: Dictionary where keys are the key names and values are tuples containing the value and optional TTL.
+        """
+        now = self._current_time()
+        sql = """
+            INSERT OR REPLACE INTO FlashDB (key, value, expires_at) 
+            VALUES (?, ?, ?)
+        """
+        values = [
+            (key, encode_value(value), (datetime.utcnow() + timedelta(seconds=ttl)).isoformat() if ttl else None)
+            for key, (value, ttl) in items.items()
+        ]
+        self.cursor.executemany(sql, values)
+
     def get(self, key: str) -> Optional[Any]:
         """
         Retrieves the value associated with the key if it exists and has not expired.
@@ -82,20 +97,25 @@ class Client:
         result = self.cursor.fetchone()
         return decode_value(result[0]) if result else None
 
-    def exists(self, key: str) -> bool:
+    def get_many(self, keys: List[str]) -> Dict[str, Optional[Any]]:
         """
-        Checks if a key exists and is not expired.
+        Retrieves values for multiple keys.
 
         Args:
-            key: The key to check.
+            keys: List of keys to look up.
 
         Returns:
-            True if the key exists and is not expired, False otherwise.
+            A dictionary where keys are the key names and values are the associated values or None if not found or expired.
         """
         self.cleanup()
-        self.cursor.execute("SELECT 1 FROM FlashDB WHERE key = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1", 
-                            (key, self._current_time()))
-        return self.cursor.fetchone() is not None
+        now = self._current_time()
+        placeholders = ','.join('?' for _ in keys)
+        self.cursor.execute(f"""
+            SELECT key, value FROM FlashDB 
+            WHERE key IN ({placeholders}) AND (expires_at IS NULL OR expires_at > ?)
+        """, (*keys, now))
+        result = self.cursor.fetchall()
+        return {key: decode_value(value) for key, value in result}
 
     def delete(self, key: str) -> None:
         """
@@ -105,6 +125,16 @@ class Client:
             key: The key to delete.
         """
         self.cursor.execute("DELETE FROM FlashDB WHERE key = ?", (key,))
+
+    def delete_many(self, keys: List[str]) -> None:
+        """
+        Deletes multiple key-value pairs in one batch.
+
+        Args:
+            keys: List of keys to delete.
+        """
+        placeholders = ','.join('?' for _ in keys)
+        self.cursor.execute(f"DELETE FROM FlashDB WHERE key IN ({placeholders})", keys)
 
     def rename(self, old_key: str, new_key: str) -> None:
         """
@@ -205,7 +235,7 @@ class Client:
         """
         now = self._current_time()
         self.cursor.execute("DELETE FROM FlashDB WHERE expires_at IS NOT NULL AND expires_at <= ?", (now,))
-
+    
     def vacuum(self) -> None:
         """
         Optimizes the database file by reducing its size using the VACUUM command.
@@ -237,3 +267,18 @@ class Client:
         Closes the database connection.
         """
         self.conn.close()
+    
+    def exists(self, key: str) -> bool:
+        """
+        Checks if a key exists and is not expired.
+
+        Args:
+            key: The key to check.
+
+        Returns:
+            True if the key exists and is not expired, False otherwise.
+        """
+        self.cleanup()
+        self.cursor.execute("SELECT 1 FROM FlashDB WHERE key = ? AND (expires_at IS NULL OR expires_at > ?) LIMIT 1", 
+                            (key, self._current_time()))
+        return self.cursor.fetchone() is not None
