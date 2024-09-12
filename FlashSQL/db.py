@@ -28,6 +28,7 @@ class Client:
         self.conn.execute("PRAGMA temp_store=MEMORY")
         self.conn.execute("PRAGMA cache_size=-64000")
         self.conn.execute("PRAGMA mmap_size=30000000000")
+        self.conn.execute("PRAGMA optimize")
         
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS FlashDB (
