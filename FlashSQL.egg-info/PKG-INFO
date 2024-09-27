@@ -1,3 +1,32 @@
+Metadata-Version: 2.1
+Name: FlashSQL
+Version: 0.3.6
+Summary: A lightweight key-value database using SQLite and APSW.
+Home-page: https://github.com/superhexa/FlashSQL
+Author: Hexa
+Author-email: shexa.developer@gmail.com
+Project-URL: Documentation, https://github.com/superhexa/FlashSQL#readme
+Project-URL: Source, https://github.com/superhexa/FlashSQL
+Project-URL: Tracker, https://github.com/superhexa/FlashSQL/issues
+Keywords: database key-value sqlite apsw peformance
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: apsw
+
 <div align="center">
 
 # FlashSQL
@@ -229,6 +258,14 @@ value = db.pop('session')
 print(value)  # Output: {'user': 'hexa'} if within TTL and removed from the database
 ```
 
+### Moving Values
+
+Use the `move` method to move a value from one key to another.
+
+```python
+db.move('old_key', 'new_key')
+```
+
 ### Updating Values
 
 Use the `update` method to update the value of an existing key without changing its expiration.
@@ -293,8 +330,11 @@ db.set_expire('new_key', ttl=7200)  # Expires in 2 hours
 popped_value = db.pop('age')
 print(popped_value)  # Output: 30
 
-# Update a value
-db.update('new_key', 'value2')
+# Move a value from one key to another
+db.move('new_key', 'moved_key')
+
+# Update a value without changing its expiration
+db.update('moved_key', 'updated_value')
 
 # Clean up expired keys
 db.cleanup()

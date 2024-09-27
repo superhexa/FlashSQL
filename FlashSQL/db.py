@@ -337,16 +337,3 @@ class Client:
             return True
         return False
     
-    def move(self, old_key: str, new_key: str) -> bool:
-        """
-        Moves the value from the old key to a new key.
-
-        Args:
-            old_key: The current key to move from.
-            new_key: The new key to move to.
-
-        Returns:
-            True if the move was successful (old key exists), False otherwise.
-        """
-        value = self.pop(old_key)
-        return bool(value) and self.set(new_key, value)
