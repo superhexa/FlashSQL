@@ -24,7 +24,6 @@ class Client:
         """
         Sets up the database schema and PRAGMA settings for optimal performance.
         """
-        self.conn.execute("PRAGMA synchronous=OFF")
         self.conn.execute("PRAGMA temp_store=MEMORY")
         self.conn.execute("PRAGMA cache_size=-128000") 
         self.conn.execute("PRAGMA mmap_size=5000000000")  # 5GB memory map
